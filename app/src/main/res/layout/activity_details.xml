@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:background="@color/colorPrimaryDark"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <include layout="@layout/my_toolbar" />
+
+    <ImageView
+        android:id="@+id/image_logo_details"
+        android:scaleType="centerCrop"
+        android:layout_width="match_parent"
+        android:layout_height="250dp" />
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/recycler_view_details"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+</LinearLayout>
