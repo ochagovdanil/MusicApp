@@ -74,7 +74,15 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        stopService(new Intent(MainActivity.this, MusicForegroundService.class));
+
+        if (mMediaPlayer != null && mCurrentSong != null) {
+            mMediaPlayer.stop();
+            mMediaPlayer.reset();
+            mMediaPlayer.release();
+            mMediaPlayer = null;
+            mCurrentSong = null;
+            stopService(new Intent(MainActivity.this, MusicForegroundService.class));
+        }
     }
 
     @Override
