@@ -598,7 +598,7 @@ public class MainActivity extends AppCompatActivity {
                 mCurrentTime.setText(convertTime(mMediaPlayer.getCurrentPosition()));
 
                 // if a song ends
-                if (mSeekBar.getProgress() == mMediaPlayer.getDuration()) {
+                if (mMediaPlayer.getCurrentPosition() >= mMediaPlayer.getDuration()) {
                     // repeat a song
                     if (mPreferences.getRepeatedMode()) {
                         destroySong();
