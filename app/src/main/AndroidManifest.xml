@@ -37,6 +37,10 @@
 
         <service
             android:exported="false"
+            android:name=".MusicService" />
+
+        <service
+            android:exported="false"
             android:name=".MusicForegroundService" />
 
     </application>

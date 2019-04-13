@@ -1,19 +1,21 @@
 package com.example.musicapp.activities;
 
 import android.Manifest;
+import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.AudioManager;
-import android.media.MediaPlayer;
 import android.media.session.MediaSession;
 import android.media.session.PlaybackState;
 import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
+import android.os.IBinder;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
@@ -30,6 +32,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.musicapp.MusicForegroundService;
+import com.example.musicapp.MusicService;
 import com.example.musicapp.R;
 import com.example.musicapp.adapters.SongsRecyclerViewAdapter;
 import com.example.musicapp.helpers.PreferencesApp;
@@ -37,7 +40,6 @@ import com.example.musicapp.models.CurrentSong;
 import com.example.musicapp.models.Song;
 
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -49,13 +51,14 @@ public class MainActivity extends AppCompatActivity {
     private static final int READ_EXTERNAL_STORAGE_PERMISSION = 1;
     public static final int DELETE_SONG_REQUEST_CODE = 2;
 
+    private MusicService mMusicService;
+    private boolean isBound = false;
     private PreferencesApp mPreferences;
     private SongsRecyclerViewAdapter mAdapter;
     private RecyclerView mRecyclerView;
     private TextView mTitle, mArtist, mCurrentTime, mDuration;
     private SeekBar mSeekBar;
     private Handler mHandler;
-    private MediaPlayer mMediaPlayer;
     private ImageView mPlayStopButton, mNextButton, mPreviousButton, mLogo, mButtonTop;
     private CurrentSong mCurrentSong; // save data of a current song
 
@@ -72,16 +75,28 @@ public class MainActivity extends AppCompatActivity {
     }
 
     @Override
+    protected void onStart() {
+        super.onStart();
+
+        // run the music bound service
+        Intent intent = new Intent(MainActivity.this, MusicService.class);
+        bindService(intent, mServiceConnection, Context.BIND_AUTO_CREATE);
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
 
-        if (mMediaPlayer != null && mCurrentSong != null) {
-            mMediaPlayer.stop();
-            mMediaPlayer.reset();
-            mMediaPlayer.release();
-            mMediaPlayer = null;
+        if (isBound && mMusicService.getPlayer() != null && mCurrentSong != null) {
+            mMusicService.getPlayer().stop();
+            mMusicService.getPlayer().reset();
+            mMusicService.getPlayer().release();
+            mMusicService.setMediaPlayer(null);
             mCurrentSong = null;
             stopService(new Intent(MainActivity.this, MusicForegroundService.class));
+
+            // stop the music bound service
+            unbindService(mServiceConnection);
         }
     }
 
@@ -108,7 +123,7 @@ public class MainActivity extends AppCompatActivity {
                         int position = mCurrentSong.getPosition();
 
                         mAdapter.deleteSong(position);
-                        destroySong();
+                        mMusicService.destroySong();
                         Toast.makeText(
                                 MainActivity.this,
                                 R.string.delete_song_msg,
@@ -124,7 +139,7 @@ public class MainActivity extends AppCompatActivity {
 
                         updateCurrentSong(newPosition);
                         scrollTo(newPosition);
-                        playSong();
+                        mMusicService.playSong(mCurrentSong);
                     }
                 }
             }
@@ -292,10 +307,13 @@ public class MainActivity extends AppCompatActivity {
                                 song.getSize(),
                                 song.getMimType());
 
-                if (mMediaPlayer == null) playSong();
-                else {
-                    destroySong(); // stop the previous song
-                    playSong();
+                if (isBound) {
+                    if (mMusicService.getPlayer() == null)
+                        mMusicService.playSong(mCurrentSong); // play a selected song
+                    else {
+                        mMusicService.destroySong(); // stop the previous song and play again
+                        mMusicService.playSong(mCurrentSong);
+                    }
                 }
             }
         });
@@ -305,22 +323,26 @@ public class MainActivity extends AppCompatActivity {
         mPlayStopButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mMediaPlayer != null) {
-                    if (mMediaPlayer.isPlaying()) pauseSong();
-                    else resumeSong();
+                if (isBound && mMusicService.getPlayer() != null) {
+                    if (mMusicService.getPlayer().isPlaying()) mMusicService.pauseSong();
+                    else mMusicService.resumeSong();
                 }
             }
         });
         mNextButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mMediaPlayer != null) nextSong();
+                if (isBound && mMusicService.getPlayer() != null) {
+                    mMusicService.nextSong(mCurrentSong, mAdapter);
+                }
             }
         });
         mPreviousButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mMediaPlayer != null) previousSong();
+                if (isBound && mMusicService.getPlayer() != null) {
+                    mMusicService.previousSong(mCurrentSong, mAdapter);
+                }
             }
         });
     }
@@ -332,57 +354,6 @@ public class MainActivity extends AppCompatActivity {
                 mRecyclerView.smoothScrollToPosition(0);
             }
         });
-    }
-
-    private void playSong() {
-        try {
-            // turn the song on
-            mMediaPlayer = new MediaPlayer();
-            mMediaPlayer.setDataSource(mCurrentSong.getUrl());
-            mMediaPlayer.prepare();
-            mMediaPlayer.setOnPreparedListener(new MediaPlayer.OnPreparedListener() {
-                @Override
-                public void onPrepared(MediaPlayer mp) {
-                    mp.start();
-                    mSeekBar.setMax(mMediaPlayer.getDuration());
-                    mDuration.setText(convertTime(mMediaPlayer.getDuration()));
-                }
-            });
-
-            // update the ui
-            mTitle.setText(mCurrentSong.getTitle());
-            mArtist.setText(mCurrentSong.getArtist());
-            mPlayStopButton.setImageResource(R.drawable.ic_stop_song);
-            mLogo.setImageBitmap(mCurrentSong.getImage());
-            mHandler.post(timeSong);
-
-            Intent intent = new Intent(MainActivity.this, MusicForegroundService.class);
-            intent.putExtra("title", mCurrentSong.getTitle());
-            intent.putExtra("artist", mCurrentSong.getArtist());
-            startService(intent);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void pauseSong() {
-        mMediaPlayer.pause();
-        mPlayStopButton.setImageResource(R.drawable.ic_play_song);
-    }
-
-    private void resumeSong() {
-        mMediaPlayer.start();
-        mPlayStopButton.setImageResource(R.drawable.ic_stop_song);
-    }
-
-    private void destroySong() {
-        mMediaPlayer.stop();
-        mMediaPlayer.reset();
-        mMediaPlayer.release();
-        mMediaPlayer = null;
-        mHandler.removeCallbacks(timeSong);
-        mSeekBar.setProgress(0);
-        stopService(new Intent(MainActivity.this, MusicForegroundService.class));
     }
 
     private void seekTo() {
@@ -397,45 +368,11 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
-                if (mMediaPlayer != null) {
-                    mMediaPlayer.seekTo(seekBar.getProgress());
+                if (mMusicService.getPlayer() != null) {
+                    mMusicService.seekTo(seekBar.getProgress());
                 }
             }
         });
-    }
-
-    private void nextSong() {
-        destroySong();
-
-        int position;
-        if (mCurrentSong.getPosition() == (mAdapter.getItemCount() - 1)) {
-            // play the first song
-            position = 0;
-        } else {
-            // play the next song
-            position = mCurrentSong.getPosition() + 1;
-        }
-
-        updateCurrentSong(position);
-        scrollTo(position);
-        playSong();
-    }
-
-    private void previousSong() {
-        destroySong();
-
-        int position;
-        if (mCurrentSong.getPosition() == 0) {
-            // play the last song
-            position = mAdapter.getItemCount() - 1;
-        } else {
-            // play the previous song
-            position = mCurrentSong.getPosition() - 1;
-        }
-
-        updateCurrentSong(position);
-        scrollTo(position);
-        playSong();
     }
 
     private void scrollTo(int position) {
@@ -462,7 +399,7 @@ public class MainActivity extends AppCompatActivity {
         imageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mMediaPlayer != null) {
+                if (mMusicService.getPlayer() != null) {
                     if (mPreferences.getRepeatedMode()) {
                         // turn off
                         imageView.setImageResource(R.drawable.ic_not_repeat);
@@ -534,7 +471,7 @@ public class MainActivity extends AppCompatActivity {
         imageView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mMediaPlayer != null && mCurrentSong != null) {
+                if (isBound && mMusicService.getPlayer() != null && mCurrentSong != null) {
                     Intent intent = new Intent(MainActivity.this, DetailsActivity.class);
                     intent.putExtra("title", mCurrentSong.getTitle());
                     intent.putExtra("artist", mCurrentSong.getArtist());
@@ -566,9 +503,13 @@ public class MainActivity extends AppCompatActivity {
 
                     if (event != null) {
                         if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                            if (mMediaPlayer != null) {
-                                if (mMediaPlayer.isPlaying()) pauseSong();
-                                else resumeSong();
+                            if (mMusicService.getPlayer() != null) {
+                                if (mMusicService.getPlayer().isPlaying()) {
+                                    mMusicService.pauseSong();
+                                }
+                                else {
+                                    mMusicService.resumeSong();
+                                }
                             }
                         }
                     }
@@ -589,21 +530,99 @@ public class MainActivity extends AppCompatActivity {
         audioSession.setActive(true);
     }
 
+    // Music Service
+    private ServiceConnection mServiceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            MusicService.LocalBinder binder = (MusicService.LocalBinder) service;
+            mMusicService = binder.getService();
+
+            isBound = true;
+
+            setUpBridge();
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            isBound = false;
+        }
+    };
+
+    // this methods are called from Music Service
+    private void setUpBridge() {
+        mMusicService.setMusicServiceBridge(new MusicService.MusicBridgeServiceActivity() {
+            @Override
+            public void playSongPreparedPlayer() {
+                mSeekBar.setMax(mMusicService.getPlayer().getDuration());
+                mDuration.setText(convertTime(mMusicService.getPlayer().getDuration()));
+            }
+
+            @Override
+            public void playSong() {
+                mTitle.setText(mCurrentSong.getTitle());
+                mArtist.setText(mCurrentSong.getArtist());
+                mPlayStopButton.setImageResource(R.drawable.ic_stop_song);
+                mLogo.setImageBitmap(mCurrentSong.getImage());
+                mHandler.post(timeSong);
+
+                Intent intent = new Intent(MainActivity.this, MusicForegroundService.class);
+                intent.putExtra("title", mCurrentSong.getTitle());
+                intent.putExtra("artist", mCurrentSong.getArtist());
+                startService(intent);
+            }
+
+            @Override
+            public void pauseSong() {
+                mPlayStopButton.setImageResource(R.drawable.ic_play_song);
+            }
+
+            @Override
+            public void resumeSong() {
+                mPlayStopButton.setImageResource(R.drawable.ic_stop_song);
+            }
+
+            @Override
+            public void destroySong() {
+                mHandler.removeCallbacks(timeSong);
+                mSeekBar.setProgress(0);
+                stopService(new Intent(MainActivity.this, MusicForegroundService.class));
+            }
+
+            @Override
+            public CurrentSong nextSong(int position) {
+                updateCurrentSong(position);
+                scrollTo(position);
+
+                return mCurrentSong;
+            }
+
+            @Override
+            public CurrentSong previousSong(int position) {
+                updateCurrentSong(position);
+                scrollTo(position);
+
+                return mCurrentSong;
+            }
+        });
+    }
+
+    // SeekBar of a current song
     Runnable timeSong = new Runnable() {
         @Override
         public void run() {
-            if (mMediaPlayer != null) {
+            if (mMusicService.getPlayer() != null) {
                 // set progress of SeekBar
-                mSeekBar.setProgress(mMediaPlayer.getCurrentPosition());
-                mCurrentTime.setText(convertTime(mMediaPlayer.getCurrentPosition()));
+                mSeekBar.setProgress(mMusicService.getPlayer().getCurrentPosition());
+                mCurrentTime.setText(convertTime(mMusicService.getPlayer().getCurrentPosition()));
 
                 // if a song ends
-                if (mMediaPlayer.getCurrentPosition() >= mMediaPlayer.getDuration()) {
+                if (mMusicService.getPlayer().getCurrentPosition()
+                        >= mMusicService.getPlayer().getDuration()) {
                     // repeat a song
                     if (mPreferences.getRepeatedMode()) {
-                        destroySong();
-                        playSong();
-                    } else nextSong();
+                        mMusicService.destroySong();
+                        mMusicService.playSong(mCurrentSong);
+                    } else mMusicService.nextSong(mCurrentSong, mAdapter);
                 }
 
                 mHandler.postDelayed(this, 100);
