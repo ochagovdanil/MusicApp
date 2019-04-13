@@ -6,6 +6,7 @@ import android.media.MediaPlayer;
 import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
+import android.widget.RemoteViews;
 
 import com.example.musicapp.adapters.SongsRecyclerViewAdapter;
 import com.example.musicapp.models.CurrentSong;
@@ -13,6 +14,10 @@ import com.example.musicapp.models.CurrentSong;
 import java.io.IOException;
 
 public class MusicService extends Service {
+
+    private static final int PREVIOUS_REQUEST_CODE = 2;
+    private static final int NEXT_REQUEST_CODE = 3;
+    private static final int PAUSE_RESUME_REQUEST_CODE = 4;
 
     private MusicBridgeServiceActivity mBridge;
     private IBinder mBinder = new LocalBinder();
@@ -32,7 +37,38 @@ public class MusicService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        return super.onStartCommand(intent, flags, startId);
+        // the notification buttons controller
+        switch (intent.getIntExtra("music_control", -1)) {
+            case NEXT_REQUEST_CODE:
+                // play a next song
+                nextSong(mBridge.getCurrentSong(), mBridge.getAdapter());
+                break;
+
+            case PREVIOUS_REQUEST_CODE:
+                // play a previous song
+                previousSong(mBridge.getCurrentSong(), mBridge.getAdapter());
+                break;
+
+            case PAUSE_RESUME_REQUEST_CODE:
+                RemoteViews remoteViews =
+                        new RemoteViews(getPackageName(), R.layout.partial_music_notification);
+
+                if (mPlayer.isPlaying()) {
+                    // pause
+                    pauseSong();
+                    remoteViews.setImageViewResource(
+                            R.id.image_play_stop_notification,
+                            R.drawable.ic_play_song);
+                } else {
+                    // resume
+                    resumeSong();
+                    remoteViews.setImageViewResource(
+                            R.id.image_play_stop_notification,
+                            R.drawable.ic_stop_song);
+                }
+        }
+
+        return START_REDELIVER_INTENT;
     }
 
     @Override
@@ -126,12 +162,22 @@ public class MusicService extends Service {
 
     public interface MusicBridgeServiceActivity {
         void playSongPreparedPlayer();
+
         void playSong();
+
         void pauseSong();
+
         void resumeSong();
+
         void destroySong();
+
         CurrentSong nextSong(int position);
+
         CurrentSong previousSong(int position);
+
+        CurrentSong getCurrentSong();
+
+        SongsRecyclerViewAdapter getAdapter();
     }
 
 }

@@ -603,6 +603,16 @@ public class MainActivity extends AppCompatActivity {
 
                 return mCurrentSong;
             }
+
+            @Override
+            public CurrentSong getCurrentSong() {
+                return mCurrentSong;
+            }
+
+            @Override
+            public SongsRecyclerViewAdapter getAdapter() {
+                return mAdapter;
+            }
         });
     }
 

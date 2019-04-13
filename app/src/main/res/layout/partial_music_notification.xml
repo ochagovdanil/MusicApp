@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal"
+    android:layout_width="match_parent"
+    android:layout_height="64dp"
+    android:baselineAligned="false">
+
+    <LinearLayout
+        android:orientation="vertical"
+        android:layout_weight="1"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <TextView
+            android:id="@+id/text_title_notification"
+            style="@style/TextAppearance.Compat.Notification.Title"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:layout_weight="1"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+        <TextView
+            android:id="@+id/text_info_notification"
+            style="@style/TextAppearance.Compat.Notification"
+            android:singleLine="true"
+            android:ellipsize="end"
+            android:layout_weight="1"
+            android:layout_marginBottom="8dp"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+    </LinearLayout>
+    <RelativeLayout
+        android:layout_weight="2"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+        <LinearLayout
+            android:layout_centerInParent="true"
+            android:orientation="horizontal"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content">
+            <ImageView
+                android:id="@+id/image_previous_notification"
+                android:layout_margin="6dp"
+                android:layout_gravity="center_vertical"
+                android:src="@drawable/ic_previous_song"
+                android:layout_width="20dp"
+                android:layout_height="20dp" />
+            <ImageView
+                android:id="@+id/image_play_stop_notification"
+                android:layout_margin="6dp"
+                android:src="@drawable/ic_stop_song"
+                android:layout_width="25dp"
+                android:layout_height="25dp" />
+            <ImageView
+                android:id="@+id/image_next_notification"
+                android:layout_margin="6dp"
+                android:layout_gravity="center_vertical"
+                android:src="@drawable/ic_next_song"
+                android:layout_width="20dp"
+                android:layout_height="20dp" />
+        </LinearLayout>
+    </RelativeLayout>
+
+</LinearLayout>
