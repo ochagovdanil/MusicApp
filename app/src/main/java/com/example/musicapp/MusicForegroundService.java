@@ -1,5 +1,6 @@
 package com.example.musicapp;
 
+import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
@@ -16,7 +17,7 @@ public class MusicForegroundService extends Service {
     private static final int NOTIFICATION_ID = 1;
     private static final String CHANNEL_ID = "channel_id_01";
 
-    // the buttons controller (notification)
+    // buttons notification control
     private static final int MUSIC_SERVICE_REQUEST_CODE = 1;
     private static final int PREVIOUS_REQUEST_CODE = 2;
     private static final int NEXT_REQUEST_CODE = 3;
@@ -86,6 +87,16 @@ public class MusicForegroundService extends Service {
         remoteViews.setOnClickPendingIntent(R.id.image_next_notification, nextSongPendingIntent);
         remoteViews.setOnClickPendingIntent(R.id.image_previous_notification, previousPendingIntent);
         remoteViews.setOnClickPendingIntent(R.id.image_play_stop_notification, pauseResumePendingIntent);
+
+        if (intent.getBooleanExtra("pause", false)) {
+            remoteViews.setImageViewResource(
+                    R.id.image_play_stop_notification,
+                    R.drawable.ic_play_song);
+        } else {
+            remoteViews.setImageViewResource(
+                    R.id.image_play_stop_notification,
+                    R.drawable.ic_stop_song);
+        }
 
 
         // builder

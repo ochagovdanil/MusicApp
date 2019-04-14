@@ -565,7 +565,9 @@ public class MainActivity extends AppCompatActivity {
                 mLogo.setImageBitmap(mCurrentSong.getImage());
                 mHandler.post(timeSong);
 
+                // update the service
                 Intent intent = new Intent(MainActivity.this, MusicForegroundService.class);
+                intent.putExtra("pause", false);
                 intent.putExtra("title", mCurrentSong.getTitle());
                 intent.putExtra("artist", mCurrentSong.getArtist());
                 startService(intent);
@@ -574,18 +576,31 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void pauseSong() {
                 mPlayStopButton.setImageResource(R.drawable.ic_play_song);
+
+                // update the service
+                Intent intent1 = new Intent(MainActivity.this, MusicForegroundService.class);
+                intent1.putExtra("pause", true);
+                intent1.putExtra("title", mCurrentSong.getTitle());
+                intent1.putExtra("artist", mCurrentSong.getArtist());
+                startService(intent1);
             }
 
             @Override
             public void resumeSong() {
                 mPlayStopButton.setImageResource(R.drawable.ic_stop_song);
+
+                // update the service
+                Intent intent1 = new Intent(MainActivity.this, MusicForegroundService.class);
+                intent1.putExtra("pause", false);
+                intent1.putExtra("title", mCurrentSong.getTitle());
+                intent1.putExtra("artist", mCurrentSong.getArtist());
+                startService(intent1);
             }
 
             @Override
             public void destroySong() {
                 mHandler.removeCallbacks(timeSong);
                 mSeekBar.setProgress(0);
-                stopService(new Intent(MainActivity.this, MusicForegroundService.class));
             }
 
             @Override

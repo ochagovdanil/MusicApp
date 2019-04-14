@@ -6,7 +6,6 @@ import android.media.MediaPlayer;
 import android.os.Binder;
 import android.os.IBinder;
 import android.support.annotation.Nullable;
-import android.widget.RemoteViews;
 
 import com.example.musicapp.adapters.SongsRecyclerViewAdapter;
 import com.example.musicapp.models.CurrentSong;
@@ -15,6 +14,7 @@ import java.io.IOException;
 
 public class MusicService extends Service {
 
+    // buttons notification control
     private static final int PREVIOUS_REQUEST_CODE = 2;
     private static final int NEXT_REQUEST_CODE = 3;
     private static final int PAUSE_RESUME_REQUEST_CODE = 4;
@@ -50,21 +50,12 @@ public class MusicService extends Service {
                 break;
 
             case PAUSE_RESUME_REQUEST_CODE:
-                RemoteViews remoteViews =
-                        new RemoteViews(getPackageName(), R.layout.partial_music_notification);
-
                 if (mPlayer.isPlaying()) {
                     // pause
                     pauseSong();
-                    remoteViews.setImageViewResource(
-                            R.id.image_play_stop_notification,
-                            R.drawable.ic_play_song);
                 } else {
                     // resume
                     resumeSong();
-                    remoteViews.setImageViewResource(
-                            R.id.image_play_stop_notification,
-                            R.drawable.ic_stop_song);
                 }
         }
 
