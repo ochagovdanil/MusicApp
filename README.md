@@ -4,6 +4,7 @@ _Here is it_
 <div align="center">
   <img src="screenshots/screenshot_1.png" width="350px" />
   <img src="screenshots/screenshot_2.png" width="350px" />
+  <img src="screenshots/screenshot_3.png" width="350px" />
 </div> <br />
 
 _Music App - a simple music player for Android where you can enjoy listening to your favorite songs._
