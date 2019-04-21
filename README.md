@@ -11,6 +11,7 @@ _Music App - a simple music player for Android where you can enjoy listening to 
 
  * Name - Music App
  * Android 5.0(API 21) or higher
+ * Apk size - 3.56 MB
  * Developer - Danil Ochagov [(ochagovdanil)](https://github.com/ochagovdanil)
 
 # Getting Started
