@@ -49,7 +49,7 @@ import java.util.Locale;
 public class MainActivity extends AppCompatActivity {
 
     private static final int READ_EXTERNAL_STORAGE_PERMISSION = 1;
-    public static final int DELETE_SONG_REQUEST_CODE = 2;
+    private static final int DELETE_SONG_REQUEST_CODE = 2;
 
     private MusicService mMusicService;
     private boolean isBound = false;
